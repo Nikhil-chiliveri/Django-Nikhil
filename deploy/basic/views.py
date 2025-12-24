@@ -1,5 +1,10 @@
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
+import math
+import json
+from django.views.decorators.csrf import csrf_exempt
+from basic.models import userProfile,Employee
+from django.db.utils import IntegrityError
 
 # Create your views here.
 def home(request):
@@ -23,7 +28,7 @@ def productInfo(request):
 def filteringData(request):
     data=[1,2,3,4,5,6,7,8,9,10]
     filteredData=[]
-
+ 
     qp=int(request.GET.get("num",2))
 
     for x in data:
@@ -42,4 +47,52 @@ def filterStudentsByCity(request):
         if student["city"] == city:
             filteredStudents.append(student)
     return JsonResponse({"status":"sucess","data":filteredStudents})
+
+
+def pagination(request):
+    data=['apple','banana','carrot','grapes','watermelon','kiwi','pineapple','custard-apple','strawberry','blueberry','dragonfruit']
+    page =int(request.GET.get("page",1))
+    limit =int(request.GET.get("limit",3))
+
+    start=(page-1)*limit
+    end=page*limit
+    total_pages=math.ceil(len(data)/limit)
+    result = data[start:end]
+
+    res={"status":"sucess","current_page":page,"total_pages":total_pages,"data":result}
+    return JsonResponse(res,status=302)
     
+@csrf_exempt
+def createData(request):
+    try:
+        if request.method =="POST":
+            data=json.loads(request.body)
+            name=data.get("name")
+            age=data.get("age")
+            city=data.get("city")
+            userProfile.objects.create(name=name,age=age,city=city)
+            print(data)
+        return JsonResponse({"status":"sucess","data":data,"statuscode":201},status=201)   
+    except Exception as e:
+        return JsonResponse({"statuscode":500,"message":"internal server error"})
+
+
+@csrf_exempt
+def createProduct(request):
+    if request.method =="POST":
+        data=json.loads(request.body)
+        print(data)
+    return JsonResponse({"status":"sucess","data":data,"statuscode":201})
+
+@csrf_exempt
+def createEmployee(request):
+    try:
+        if request.method=="POST":
+            data=json.loads(request.body)
+            print(data)
+            Employee.objects.create(emp_name=data.get("name"),emp_salary=data.get("sal"),emp_email=data.get("email"))
+        return JsonResponse({"status":"success","data":data,"statuscode":201},status=201) 
+    except IntegrityError as e:
+        return JsonResponse({"status":"error","message":"inputs are invalid or acceptable"},status=400)
+    finally:
+        print("done")
